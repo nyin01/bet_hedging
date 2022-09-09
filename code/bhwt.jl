@@ -79,8 +79,8 @@ function simulate(k::Int64, bhGermRate::Float64, s::Float64, cv::Float64)
         seedNum = getNextGen(k, seedNum, bhGermRate, s, cv)
         generations += 1
     end
-    return seedNum[1] > 0
-    # returns True (1) if BH win, False (0) otherwise
+    return [seedNum[1] > 0, seedNum[1] == 0 && seedNum[2] == 0]
+    # CORRECTION: RETURNS [bh win, tie] so that "both go extinct" does not get accounted for
 end
 
 # parameters: 
@@ -138,19 +138,29 @@ reps = 500 * 10^3
 
 file = "plotting/results/final_results.csv"
 
+output = open(file, "w")
+write(output, join(["K", "G", "S", "CV", "NPfix"], ","), "\n")
+close(output)
+
 for k in K
     for g in G
         for s in S
             for cv in CV
                 tick()
                 count = 0
+                ties = 0
                 for run = 1 : reps
-                    count += simulate(k, g, s, cv)
+                    (BHfix, tie) = simulate(k, g, s, cv)
+                    count += BHfix
+                    ties += tie
                 end
-                npf = ((count / reps) / ratio)
+                npf = ((count / (reps - ties)) / ratio)
                 output = open(file, "a")
                 write(output, join([k, g, s, cv, npf], ","), "\n")
                 close(output)
+                e = ties / reps
+                println(raw"K: " * "$k" * ", G: " * "$g" * ", S: " * "$s" * ", CV: " * "$cv")
+                println(raw"NPfix: " * "$npf" * ", mutual extinction rate: " * "$e")
                 tock()
             end
         end
